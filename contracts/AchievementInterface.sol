@@ -8,5 +8,5 @@ interface AchievementContractInterface {
         external
         returns (AchievementModel.AchievementMetadata[] memory);
 
-    function addAchivement(uint256 summonerId, uint256 achievementId) external;
+    function unlockAchivement(uint256 summonerId, uint256 achievementId) external;
 }

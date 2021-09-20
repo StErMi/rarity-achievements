@@ -28,6 +28,7 @@ library AchievementModel {
 
     struct AchievementExpanded {
         AchievementMetadata metadata;
+        string source_name;
         uint256 summoner;
         uint256 timestamp;
     }
@@ -40,5 +41,10 @@ library AchievementModel {
         string title;
         string description;
         uint256 points;
+    }
+
+    struct SourceMetadata {
+        bool enabled;
+        string name;
     }
 }

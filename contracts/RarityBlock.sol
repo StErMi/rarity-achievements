@@ -58,8 +58,8 @@ contract RarityBlock is Ownable {
     }
 
     function adventure(uint256 summonerId) public {
-        _ac.addAchivement(summonerId, mobAchievement.id);
-        _ac.addAchivement(summonerId, miniBossAchievement.id);
-        _ac.addAchivement(summonerId, bossAchievement.id);
+        _ac.unlockAchivement(summonerId, mobAchievement.id);
+        _ac.unlockAchivement(summonerId, miniBossAchievement.id);
+        _ac.unlockAchivement(summonerId, bossAchievement.id);
     }
 }

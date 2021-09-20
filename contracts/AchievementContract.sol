@@ -18,7 +18,7 @@ contract AchievementContract is Ownable {
     Counters.Counter private _achievementId;
 
     /// @notice Contracts that can push achievements
-    mapping(address => bool) private whitelistedSources;
+    mapping(address => AchievementModel.SourceMetadata) private whitelistedSources;
     mapping(address => bool) private whitelistedAddedMetadatas;
 
     mapping(uint256 => AchievementModel.AchievementMetadata) metadatas;
@@ -26,16 +26,16 @@ contract AchievementContract is Ownable {
     mapping(uint256 => uint256) summonerAchievementPoints;
 
     /// @notice Event to track new Purpose
-    event CreateAchivement(uint256 indexed summonerId, string purpose, uint256 investment);
+    event AchivementUnlocked(uint256 indexed summonerId, string purpose, uint256 investment);
 
     modifier onlyWhitelisted() {
-        require(whitelistedSources[msg.sender] == true, "Only whitelisted source can add Achievements");
+        require(whitelistedSources[msg.sender].enabled == true, "Only whitelisted source can add Achievements");
         _;
     }
 
-    function whitelistSource(address source) public onlyOwner {
+    function whitelistSource(address source, string memory name) public onlyOwner {
         require(Address.isContract(source), "Achivement source must be a contract");
-        whitelistedSources[source] = true;
+        whitelistedSources[source] = AchievementModel.SourceMetadata(true, name);
     }
 
     function whitelistAchievements(AchievementModel.AchievementMetadata[] memory _metadatas)
@@ -69,8 +69,10 @@ contract AchievementContract is Ownable {
         );
         for (uint256 i = 0; i < summonerAchievements[summonerId].length; i++) {
             AchievementModel.Achievement storage _achievement = summonerAchievements[summonerId][i];
+            AchievementModel.AchievementMetadata memory metadata = metadatas[_achievement.id];
             AchievementModel.AchievementExpanded memory achievement = AchievementModel.AchievementExpanded({
-                metadata: metadatas[_achievement.id],
+                metadata: metadata,
+                source_name: whitelistedSources[metadata.source].name,
                 summoner: _achievement.summoner,
                 timestamp: _achievement.timestamp
             });
@@ -79,7 +81,7 @@ contract AchievementContract is Ownable {
         return _achievements;
     }
 
-    function addAchivement(uint256 summonerId, uint256 achievementId) external onlyWhitelisted {
+    function unlockAchivement(uint256 summonerId, uint256 achievementId) external onlyWhitelisted {
         require(metadatas[achievementId].source == msg.sender, "Source does not own the achievement metadata");
 
         for (uint256 i = 0; i < summonerAchievements[summonerId].length; i++) {

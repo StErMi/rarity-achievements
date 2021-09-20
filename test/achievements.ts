@@ -36,7 +36,7 @@ describe('Rarity Achievement Testing', () => {
     console.log('RarityBlock deployed to:', rarityBlock.address);
 
     // Whitelist rarityBlock contract into AchievementContract
-    await achievementContract.whitelistSource(rarityBlock.address);
+    await achievementContract.whitelistSource(rarityBlock.address, 'The Fantom Dungeon');
     console.log('RarityBlock whitelisted into AchievementContract as a Contract');
 
     // Add rarityBlock achievements to AchievementContract
@@ -62,11 +62,24 @@ describe('Rarity Achievement Testing', () => {
       achivements.map((achievement: any) => {
         console.log(`--- Achievement: ${achievement.metadata.title}`);
         console.log(`- MetadataID: ${achievement.metadata.id}`);
-        console.log(`- MetadataSource: ${achievement.metadata.source}`);
+        console.log(`- Source: ${achievement.metadata.source}`);
+        console.log(`- Source Name: ${achievement.source_name}`);
         console.log(`- Timestamp: ${new Date(Number(achievement.timestamp.toString()) * 1000)}`);
         console.log(`- Description: ${achievement.metadata.description}`);
         console.log(`- Points: ${achievement.metadata.points}`);
       });
+    });
+
+    it('Achievements not added the second time (they are unique)', async () => {
+      await rarityBlock.adventure(summoner1Id);
+
+      const tx = rarityBlock.adventure(summoner1Id);
+
+      await expect(tx).to.be.revertedWith('Summoner already own the achievement');
+
+      const acPoints = await achievementContract.getAchivementPoints(summoner1Id);
+      console.log(`Total Achivement Points for summoner ${summoner1Id} -> ${acPoints}`);
+      expect(acPoints).to.equal(65);
     });
   });
 });
