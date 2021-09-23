@@ -94,11 +94,13 @@ describe('Rarity Achievement Testing', () => {
       points: 5,
     };
 
-    const deployMalformedAchievement = async (metadatas: any[], revertMessage: string) => {
+    const deployMalformedAchievement = async (metadatas: any[], revertMessage?: string, whitelistSource = true) => {
       const RarityBlock = await ethers.getContractFactory('RarityBlock');
       const rarityBlock: Contract = await RarityBlock.deploy(achievementContract.address);
       await rarityBlock.deployed();
-      await achievementContract.whitelistSource(rarityBlock.address, 'The Fantom Dungeon Malformed');
+      if (whitelistSource) {
+        await achievementContract.whitelistSource(rarityBlock.address, 'The Fantom Dungeon Malformed');
+      }
 
       // Sending funds to the new block
       await rarityBlock.connect(owner).supplyFunds({
@@ -112,10 +114,24 @@ describe('Rarity Achievement Testing', () => {
       const rarityBlockSigner = await ethers.getSigner(rarityBlock.address);
 
       const tx = achievementContract.connect(rarityBlockSigner).whitelistAchievements(metadatas);
-      await expect(tx).to.be.revertedWith(revertMessage);
+      if (revertMessage) {
+        await expect(tx).to.be.revertedWith(revertMessage);
+      } else {
+        // Check that the contract has correctly
+        const rarityBlockMetadata = await achievementContract.whitelistedSources(rarityBlock.address);
+        const hasAddedAchievements = await achievementContract.whitelistedAddedMetadatas(rarityBlock.address);
+
+        expect(hasAddedAchievements).to.equal(true);
+        expect(rarityBlockMetadata.enabled).to.equal(true);
+        expect(rarityBlockMetadata.name).to.equal('The Fantom Dungeon Malformed');
+      }
 
       await ethers.provider.send('hardhat_stopImpersonatingAccount', [rarityBlock.address]);
     };
+
+    it('Achievements not whitelisted because source is not whitelisted', async () => {
+      await deployMalformedAchievement([correctMetadata], 'Only whitelisted source can add Achievements', false);
+    });
 
     it('Achievements not whitelisted because array of metadata is empty', async () => {
       await deployMalformedAchievement([], 'You need to pass at least one AchievementMetadata');
@@ -143,6 +159,10 @@ describe('Rarity Achievement Testing', () => {
       const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
       malformedMetadata.points = 0;
       await deployMalformedAchievement([malformedMetadata], 'Points must be greater than 0');
+    });
+
+    it('Achievements whitelisted correctly', async () => {
+      await deployMalformedAchievement([correctMetadata]);
     });
   });
 });

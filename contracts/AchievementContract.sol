@@ -18,8 +18,8 @@ contract AchievementContract is Ownable {
     Counters.Counter private _achievementId;
 
     /// @notice Contracts that can push achievements
-    mapping(address => AchievementModel.SourceMetadata) private whitelistedSources;
-    mapping(address => bool) private whitelistedAddedMetadatas;
+    mapping(address => AchievementModel.SourceMetadata) public whitelistedSources;
+    mapping(address => bool) public whitelistedAddedMetadatas;
 
     mapping(uint256 => AchievementModel.AchievementMetadata) metadatas;
     mapping(uint256 => AchievementModel.Achievement[]) summonerAchievements;
