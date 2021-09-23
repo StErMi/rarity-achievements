@@ -21,6 +21,12 @@ contract RarityBlock is Ownable {
         _ac = AchievementContractInterface(achievementContractAddress);
     }
 
+    function supplyFunds() public payable onlyOwner {
+        // this function is only made for testing purpose
+        // it's needed to send funds to the contract that need to whitelist achievements
+        // and unlock them on behalf of summoners
+    }
+
     function whitelistAchievements() public onlyOwner {
         AchievementModel.AchievementMetadata[] memory achievements = new AchievementModel.AchievementMetadata[](3);
 
@@ -51,15 +57,15 @@ contract RarityBlock is Ownable {
             points: 50
         });
 
-        AchievementModel.AchievementMetadata[] memory createdAchivements = _ac.whitelistAchievements(achievements);
-        mobAchievement = createdAchivements[0];
-        miniBossAchievement = createdAchivements[1];
-        bossAchievement = createdAchivements[2];
+        AchievementModel.AchievementMetadata[] memory createdAchievements = _ac.whitelistAchievements(achievements);
+        mobAchievement = createdAchievements[0];
+        miniBossAchievement = createdAchievements[1];
+        bossAchievement = createdAchievements[2];
     }
 
     function adventure(uint256 summonerId) public {
-        _ac.unlockAchivement(summonerId, mobAchievement.id);
-        _ac.unlockAchivement(summonerId, miniBossAchievement.id);
-        _ac.unlockAchivement(summonerId, bossAchievement.id);
+        _ac.unlockAchievement(summonerId, mobAchievement.id);
+        _ac.unlockAchievement(summonerId, miniBossAchievement.id);
+        _ac.unlockAchievement(summonerId, bossAchievement.id);
     }
 }

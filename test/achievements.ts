@@ -1,18 +1,24 @@
-const {ethers} = require('hardhat');
-const {use, expect} = require('chai');
-const {solidity} = require('ethereum-waffle');
+import {Contract} from '@ethersproject/contracts';
 
-use(solidity);
+import {ethers, waffle} from 'hardhat';
+import chai from 'chai';
+
+import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
+
+const {deployContract} = waffle;
+const {expect} = chai;
+
+// use(solidity);
 
 describe('Rarity Achievement Testing', () => {
-  let owner;
-  let addr1;
-  let addr2;
-  let addrs;
+  let owner: SignerWithAddress;
+  let addr1: SignerWithAddress;
+  let addr2: SignerWithAddress;
+  let addrs: SignerWithAddress[];
 
   let rarity;
-  let achievementContract: any;
-  let rarityBlock: any;
+  let achievementContract: Contract;
+  let rarityBlock: Contract;
   let summoner1Id = 0;
 
   beforeEach(async () => {
@@ -23,25 +29,20 @@ describe('Rarity Achievement Testing', () => {
     const Rarity = await ethers.getContractFactory('rarity');
     rarity = await Rarity.deploy();
     await rarity.deployed();
-    console.log('Rarity deployed to:', rarity.address);
 
     const AchievementContract = await ethers.getContractFactory('AchievementContract');
     achievementContract = await AchievementContract.deploy();
     await achievementContract.deployed();
-    console.log('AchievementContract deployed to:', achievementContract.address);
 
     const RarityBlock = await ethers.getContractFactory('RarityBlock');
     rarityBlock = await RarityBlock.deploy(achievementContract.address);
     await rarityBlock.deployed();
-    console.log('RarityBlock deployed to:', rarityBlock.address);
 
     // Whitelist rarityBlock contract into AchievementContract
     await achievementContract.whitelistSource(rarityBlock.address, 'The Fantom Dungeon');
-    console.log('RarityBlock whitelisted into AchievementContract as a Contract');
 
     // Add rarityBlock achievements to AchievementContract
     await rarityBlock.whitelistAchievements();
-    console.log('rarityBlock deployed own achievements into AchievementContract');
 
     // Get summoner
     summoner1Id = 0;
@@ -53,13 +54,13 @@ describe('Rarity Achievement Testing', () => {
     it('Achievements added to summoner1 correctly', async () => {
       await rarityBlock.adventure(summoner1Id);
 
-      const acPoints = await achievementContract.getAchivementPoints(summoner1Id);
-      console.log(`Total Achivement Points for summoner ${summoner1Id} -> ${acPoints}`);
+      const acPoints = await achievementContract.getAchievementPoints(summoner1Id);
+      console.log(`Total Achievement Points for summoner ${summoner1Id} -> ${acPoints}`);
       expect(acPoints).to.equal(65);
 
-      const achivements = await achievementContract.getAchivements(summoner1Id);
+      const achievements = await achievementContract.getAchievements(summoner1Id);
       console.log('Printing achievements');
-      achivements.map((achievement: any) => {
+      achievements.map((achievement: any) => {
         console.log(`--- Achievement: ${achievement.metadata.title}`);
         console.log(`- MetadataID: ${achievement.metadata.id}`);
         console.log(`- Source: ${achievement.metadata.source}`);
@@ -77,9 +78,71 @@ describe('Rarity Achievement Testing', () => {
 
       await expect(tx).to.be.revertedWith('Summoner already own the achievement');
 
-      const acPoints = await achievementContract.getAchivementPoints(summoner1Id);
-      console.log(`Total Achivement Points for summoner ${summoner1Id} -> ${acPoints}`);
+      const acPoints = await achievementContract.getAchievementPoints(summoner1Id);
+      console.log(`Total Achievement Points for summoner ${summoner1Id} -> ${acPoints}`);
       expect(acPoints).to.equal(65);
+    });
+  });
+
+  describe('Test rarityBlock.whitelistAchievements() method', () => {
+    const correctMetadata = {
+      id: 0, // replaced by AchievementContract
+      source: '', // replaced by AchievementContract
+      difficulty: 1,
+      title: 'Defeated first monster',
+      description: "You have been brave enough to defeat the first monster of 'The Fantom Dungeon'",
+      points: 5,
+    };
+
+    const deployMalformedAchievement = async (metadatas: any[], revertMessage: string) => {
+      const RarityBlock = await ethers.getContractFactory('RarityBlock');
+      const rarityBlock: Contract = await RarityBlock.deploy(achievementContract.address);
+      await rarityBlock.deployed();
+      await achievementContract.whitelistSource(rarityBlock.address, 'The Fantom Dungeon Malformed');
+
+      // Sending funds to the new block
+      await rarityBlock.connect(owner).supplyFunds({
+        value: ethers.utils.parseEther('1'),
+      });
+
+      for (let meta of metadatas) {
+        meta.source = rarityBlock.address;
+      }
+      await ethers.provider.send('hardhat_impersonateAccount', [rarityBlock.address]);
+      const rarityBlockSigner = await ethers.getSigner(rarityBlock.address);
+
+      const tx = achievementContract.connect(rarityBlockSigner).whitelistAchievements(metadatas);
+      await expect(tx).to.be.revertedWith(revertMessage);
+
+      await ethers.provider.send('hardhat_stopImpersonatingAccount', [rarityBlock.address]);
+    };
+
+    it('Achievements not whitelisted because array of metadata is empty', async () => {
+      await deployMalformedAchievement([], 'You need to pass at least one AchievementMetadata');
+    });
+
+    it('Achievements not whitelisted because difficulty is not valid', async () => {
+      const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
+      malformedMetadata.difficulty = 10;
+      await deployMalformedAchievement([malformedMetadata], 'function was called with incorrect parameters');
+    });
+
+    it('Achievements not whitelisted because title is empty', async () => {
+      const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
+      malformedMetadata.title = '';
+      await deployMalformedAchievement([malformedMetadata], 'Title must not be empty');
+    });
+
+    it('Achievements not whitelisted because description is empty', async () => {
+      const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
+      malformedMetadata.description = '';
+      await deployMalformedAchievement([malformedMetadata], 'Description must not be empty');
+    });
+
+    it('Achievements not whitelisted because achievement points are less or equal zero', async () => {
+      const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
+      malformedMetadata.points = 0;
+      await deployMalformedAchievement([malformedMetadata], 'Points must be greater than 0');
     });
   });
 });
