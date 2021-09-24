@@ -21,7 +21,7 @@ contract AchievementContract is Ownable {
     mapping(address => AchievementModel.SourceMetadata) public whitelistedSources;
     mapping(address => bool) public whitelistedAddedMetadatas;
 
-    mapping(uint256 => AchievementModel.AchievementMetadata) metadatas;
+    mapping(uint256 => AchievementModel.AchievementMetadata) public metadatas;
     mapping(uint256 => AchievementModel.Achievement[]) summonerAchievements;
     mapping(uint256 => uint256) summonerAchievementPoints;
 
@@ -47,11 +47,11 @@ contract AchievementContract is Ownable {
         require(_metadatas.length > 0, "You need to pass at least one AchievementMetadata");
 
         for (uint256 i = 0; i < _metadatas.length; i++) {
+            _achievementId.increment();
             checkMetadataStructure(_metadatas[i]);
             _metadatas[i].source = msg.sender;
             _metadatas[i].id = _achievementId.current();
             metadatas[_metadatas[i].id] = _metadatas[i];
-            _achievementId.increment();
         }
         whitelistedAddedMetadatas[msg.sender] = true;
         return _metadatas;
@@ -85,7 +85,6 @@ contract AchievementContract is Ownable {
 
     function unlockAchievement(uint256 summonerId, uint256 achievementId) external onlyWhitelisted {
         require(metadatas[achievementId].source == msg.sender, "Source does not own the achievement metadata");
-
         for (uint256 i = 0; i < summonerAchievements[summonerId].length; i++) {
             AchievementModel.Achievement storage _achievement = summonerAchievements[summonerId][i];
             require(_achievement.id != achievementId, "Summoner already own the achievement");
