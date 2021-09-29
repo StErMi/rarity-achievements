@@ -4,9 +4,9 @@ pragma solidity ^0.8.4;
 import "./AchievementModel.sol";
 
 interface AchievementContractInterface {
-    function whitelistAchievements(AchievementModel.AchievementMetadata[] memory _metadatas)
+    function registerAchievement(AchievementModel.AchievementMetadata memory metadata)
         external
-        returns (AchievementModel.AchievementMetadata[] memory);
+        returns (uint256 metadataId);
 
-    function unlockAchievement(uint256 summonerId, uint256 achievementId) external;
+    function awardAchievement(uint256 summonerId, uint256 metadataId) external;
 }

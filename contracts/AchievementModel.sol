@@ -21,14 +21,13 @@ library AchievementModel {
     }
 
     struct Achievement {
-        uint256 id;
+        uint256 metadataId;
         uint256 summoner;
         uint256 timestamp;
     }
 
     struct AchievementExpanded {
         AchievementMetadata metadata;
-        string source_name;
         uint256 summoner;
         uint256 timestamp;
     }
@@ -38,13 +37,9 @@ library AchievementModel {
         // Kind kind;
         Difficulty difficulty;
         address source;
+        string source_name;
         string title;
         string description;
         uint256 points;
-    }
-
-    struct SourceMetadata {
-        bool enabled;
-        string name;
     }
 }

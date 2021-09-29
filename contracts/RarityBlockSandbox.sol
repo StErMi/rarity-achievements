@@ -11,9 +11,9 @@ import "./AchievementModel.sol";
 */
 contract RarityBlockSandbox is Ownable {
     AchievementContractInterface _ac;
-    AchievementModel.AchievementMetadata private mobAchievement;
-    AchievementModel.AchievementMetadata private miniBossAchievement;
-    AchievementModel.AchievementMetadata private bossAchievement;
+    uint256 private mobAchievement;
+    uint256 private miniBossAchievement;
+    uint256 private bossAchievement;
 
     constructor(address achievementContractAddress) {
         _ac = AchievementContractInterface(achievementContractAddress);
@@ -25,33 +25,33 @@ contract RarityBlockSandbox is Ownable {
         // and unlock them on behalf of summoners
     }
 
-    function setMobAchievement(AchievementModel.AchievementMetadata memory achievementMetadata) public onlyOwner {
-        mobAchievement = achievementMetadata;
+    function setMobAchievement(uint256 metadataId) public onlyOwner {
+        mobAchievement = metadataId;
     }
 
-    function setMiniBossAchievement(AchievementModel.AchievementMetadata memory achievementMetadata) public onlyOwner {
-        miniBossAchievement = achievementMetadata;
+    function setMiniBossAchievement(uint256 metadataId) public onlyOwner {
+        miniBossAchievement = metadataId;
     }
 
-    function setBossAchievement(AchievementModel.AchievementMetadata memory achievementMetadata) public onlyOwner {
-        bossAchievement = achievementMetadata;
+    function setBossAchievement(uint256 metadataId) public onlyOwner {
+        bossAchievement = metadataId;
     }
 
     function adventure(uint256 summonerId) public {
-        _ac.unlockAchievement(summonerId, mobAchievement.id);
-        _ac.unlockAchievement(summonerId, miniBossAchievement.id);
-        _ac.unlockAchievement(summonerId, bossAchievement.id);
+        _ac.awardAchievement(summonerId, mobAchievement);
+        _ac.awardAchievement(summonerId, miniBossAchievement);
+        _ac.awardAchievement(summonerId, bossAchievement);
     }
 
-    function unlockAchievementMob(uint256 summonerId) public {
-        _ac.unlockAchievement(summonerId, mobAchievement.id);
+    function awardAchievementMob(uint256 summonerId) public {
+        _ac.awardAchievement(summonerId, mobAchievement);
     }
 
-    function unlockAchievementMiniBoss(uint256 summonerId) public {
-        _ac.unlockAchievement(summonerId, miniBossAchievement.id);
+    function awardAchievementMiniBoss(uint256 summonerId) public {
+        _ac.awardAchievement(summonerId, miniBossAchievement);
     }
 
-    function unlockAchievementBoss(uint256 summonerId) public {
-        _ac.unlockAchievement(summonerId, bossAchievement.id);
+    function awardAchievementBoss(uint256 summonerId) public {
+        _ac.awardAchievement(summonerId, bossAchievement);
     }
 }
