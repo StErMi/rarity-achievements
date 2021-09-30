@@ -35,9 +35,9 @@ const awardAchievement = async (
   await ethers.provider.send('hardhat_stopImpersonatingAccount', [rarityBlock.address]);
 };
 
-const createRarityBlock = async (achievementContract: Contract, fundsSender?: SignerWithAddress) => {
+const createRarityBlock = async (achievementContract: Contract, fundsSender: SignerWithAddress) => {
   const RarityBlockFactory = await ethers.getContractFactory('RarityBlockSandbox');
-  const rarityBlock: Contract = await RarityBlockFactory.deploy(achievementContract.address);
+  const rarityBlock: Contract = await RarityBlockFactory.connect(fundsSender).deploy(achievementContract.address);
   await rarityBlock.deployed();
 
   // Sending funds to the new block
