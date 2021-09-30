@@ -2,16 +2,6 @@
 pragma solidity ^0.8.4;
 
 library AchievementModel {
-    enum Kind {
-        General,
-        Quests,
-        Exploration,
-        PvP,
-        Dungeons,
-        Professions,
-        WorldEvents
-    }
-
     enum Difficulty {
         Common,
         Uncommon,
@@ -34,7 +24,6 @@ library AchievementModel {
 
     struct AchievementMetadata {
         uint256 id;
-        // Kind kind;
         Difficulty difficulty;
         address source;
         string source_name;
