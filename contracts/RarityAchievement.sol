@@ -4,13 +4,14 @@ pragma solidity ^0.8.4;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-import "./AchievementInterface.sol";
-import "./AchievementModel.sol";
+import "./interfaces/AchievementInterface.sol";
+import "./data/AchievementModel.sol";
 
 /**
- @title A contract to set a World Purpose
- @author Emanuele Ricci @StErMi
-*/
+ * @title RarityAchievement
+ * @author @StErMi
+ * @notice A general purpose Achievement System for Rarity
+ */
 contract RarityAchievement {
     using Counters for Counters.Counter;
     Counters.Counter private _metadataId;
@@ -21,7 +22,11 @@ contract RarityAchievement {
 
     event AchievementAwarded(uint256 indexed summonerId, uint256 indexed metadataId, uint256 timestamp, uint256 points);
 
-    /// @notice Register an achievement metadata
+    /**
+     * @notice Function used by external contract to register achievement metadata
+     * @param metadata Metadata of the achievement
+     * @return metadataId The ID of the registered achievement metadata
+     */
     function registerAchievement(AchievementModel.AchievementMetadata memory metadata) external returns (uint256 metadataId) {
         checkMetadata(metadata);
         _metadataId.increment();
@@ -33,6 +38,11 @@ contract RarityAchievement {
         return metadata.id;
     }
 
+    /**
+     * @notice Function used by external contract to award an achievement to a summoner
+     * @param summonerId Summoner ID to get the achievement
+     * @param metadataId ID of the achievement metadata
+     */
     function awardAchievement(uint256 summonerId, uint256 metadataId) external {
         AchievementModel.AchievementMetadata storage metadata = metadatas[metadataId];
         require(metadata.source != address(0), "Requested metadata not exist");
@@ -53,15 +63,35 @@ contract RarityAchievement {
     // External Utilities
     /////////////////////////
 
+    /**
+     * @notice Check if a user has been awarded with an achievement
+     * @param summonerId Summoner ID
+     * @param metadataId Achievement Metadata ID
+     * @return true if he already has the achievement
+     */
     function hasAchievement(uint256 summonerId, uint256 metadataId) public view returns (bool) {
         return _ownerships[summonerId][metadataId];
     }
 
+    /**
+     * @notice Get the total achievement points collected by the summoner
+     * @param summonerId Summoner ID
+     * @param sources List of whitelisted contracts to filter achievements with. Can be empty.
+     * @return amount of achievement points
+     */
     function getPoints(uint256 summonerId, address[] memory sources) public view returns (uint256) {
         (, , uint256 points) = filterAchievements(summonerId, sources);
         return points;
     }
 
+    /**
+     * @notice Get list of achievements owned by the summoner
+     * @param summonerId Summoner ID
+     * @param sources List of whitelisted contracts to filter achievements with. Can be empty.
+     * @param offset Position from which start
+     * @param limit Amount of achievements to return
+     * @return List of achievements owned by the user
+     */
     function getAchievements(
         uint256 summonerId,
         address[] memory sources,
@@ -90,6 +120,9 @@ contract RarityAchievement {
     // Internal Utilities
     /////////////////////////
 
+    /**
+     * @dev Filter summoner's achievement by the list of whitelisted sources
+     */
     function filterAchievements(uint256 summonerId, address[] memory sources)
         internal
         view
@@ -138,6 +171,9 @@ contract RarityAchievement {
         return (_tempList, maxWhitelistedLength, points);
     }
 
+    /**
+     * @dev Check the integrity of a achievement metadata
+     */
     function checkMetadata(AchievementModel.AchievementMetadata memory _metadata) internal pure {
         require(
             _metadata.difficulty >= AchievementModel.Difficulty.Common && _metadata.difficulty <= AchievementModel.Difficulty.Legendary,

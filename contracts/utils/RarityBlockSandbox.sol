@@ -2,8 +2,8 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./AchievementInterface.sol";
-import "./AchievementModel.sol";
+import "../interfaces/AchievementInterface.sol";
+import "../data/AchievementModel.sol";
 
 /**
  @title Virtual Rarity block contract
