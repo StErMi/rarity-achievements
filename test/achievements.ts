@@ -4,6 +4,13 @@ import {ethers, waffle} from 'hardhat';
 import chai from 'chai';
 
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/signers';
+import {
+  awardAchievement,
+  checkAchievementMetadata,
+  checkAchievements,
+  createRarityBlock,
+  deployAchievements,
+} from './utils';
 
 const {deployContract} = waffle;
 const {expect} = chai;
@@ -11,256 +18,269 @@ const {expect} = chai;
 // use(solidity);
 
 describe('Rarity Achievement Testing', () => {
-  let owner: SignerWithAddress;
+  let rarityOwner: SignerWithAddress;
+  let rarityAchievementOwner: SignerWithAddress;
   let addr1: SignerWithAddress;
   let addr2: SignerWithAddress;
   let addrs: SignerWithAddress[];
 
   let rarity;
   let achievementContract: Contract;
-  let rarityBlock: Contract;
   let summoner1Id = 0;
   let summoner2Id = 1;
+  let summoner3Id = 2;
 
   beforeEach(async () => {
     // eslint-disable-next-line no-unused-vars
-    [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
+    [rarityOwner, rarityAchievementOwner, addr1, addr2, ...addrs] = await ethers.getSigners();
 
     // We get the contract to deploy
     const Rarity = await ethers.getContractFactory('rarity');
-    rarity = await Rarity.deploy();
+    rarity = await Rarity.connect(rarityOwner).deploy();
     await rarity.deployed();
 
-    const AchievementContract = await ethers.getContractFactory('AchievementContract');
-    achievementContract = await AchievementContract.deploy();
+    const RarityAchievement = await ethers.getContractFactory('RarityAchievement');
+    achievementContract = await RarityAchievement.connect(rarityAchievementOwner).deploy();
     await achievementContract.deployed();
 
-    const RarityBlock = await ethers.getContractFactory('RarityBlock');
-    rarityBlock = await RarityBlock.deploy(achievementContract.address);
-    await rarityBlock.deployed();
-
-    // Whitelist rarityBlock contract into AchievementContract
-    await achievementContract.whitelistSource(rarityBlock.address, 'The Fantom Dungeon');
-
-    // Add rarityBlock achievements to AchievementContract
-    await rarityBlock.whitelistAchievements();
-
     // Get first summoner
-    let summoner1Tx = await rarity.connect(addr1).summon(1);
+    let summoner1Tx = await rarity.connect(addr2).summon(1);
     await summoner1Tx.wait();
 
     // Get first summoner
-    let summoner2Tx = await rarity.connect(addr1).summon(2);
+    let summoner2Tx = await rarity.connect(addr2).summon(2);
     await summoner2Tx.wait();
+
+    // Get first summoner
+    let summoner3Tx = await rarity.connect(addr2).summon(3);
+    await summoner3Tx.wait();
   });
 
   const achievementMetadatas = [
     {
-      id: 4,
+      id: 1,
       source: '',
+      source_name: 'The Fantom Dungeon',
       difficulty: 0,
       title: 'Defeated first monster',
       description: "You have been brave enough to defeat the first monster of 'The Fantom Dungeon'",
       points: 5,
     },
     {
-      id: 5,
+      id: 2,
       source: '',
+      source_name: 'The Fantom Dungeon',
       difficulty: 1,
       title: 'Defeated first miniboss',
       description: "You have been brave enough to defeat the Eruptus, the mini boss of 'The Fantom Dungeon'",
       points: 10,
     },
     {
-      id: 6,
+      id: 3,
       source: '',
-      difficulty: 2,
+      source_name: 'The Fantom Dungeon',
+      difficulty: 3,
       title: 'Defeated final boss',
       description: "You have been brave enough to defeat Iced Giant, the final boss of 'The Fantom Dungeon'",
       points: 50,
     },
   ];
 
-  const dungeonName = 'The Fantom Dungeon';
-
-  const deployAchievements = async (
-    metadatas: any[],
-    revertMessage?: string,
-    whitelistSource = true,
-    doubleAddMetadata = false,
-    sourceName = 'The Fantom Dungeon',
-  ) => {
-    const RarityBlock = await ethers.getContractFactory('RarityBlockSandbox');
-    const block: Contract = await RarityBlock.deploy(achievementContract.address);
-    await block.deployed();
-    if (whitelistSource) {
-      await achievementContract.whitelistSource(block.address, sourceName);
-    }
-
-    // Sending funds to the new block
-    await block.connect(owner).supplyFunds({
-      value: ethers.utils.parseEther('1'),
-    });
-
-    for (let meta of metadatas) {
-      meta.source = block.address;
-    }
-    await ethers.provider.send('hardhat_impersonateAccount', [block.address]);
-    const rarityBlockSigner = await ethers.getSigner(block.address);
-
-    const tx = achievementContract.connect(rarityBlockSigner).whitelistAchievements(metadatas);
-    if (revertMessage && !doubleAddMetadata) {
-      await expect(tx).to.be.revertedWith(revertMessage);
-    } else {
-      // Check that the contract has correctly
-      const rarityBlockMetadata = await achievementContract.whitelistedSources(block.address);
-      const hasAddedAchievements = await achievementContract.whitelistedAddedMetadatas(block.address);
-
-      expect(hasAddedAchievements).to.equal(true);
-      expect(rarityBlockMetadata.enabled).to.equal(true);
-      expect(rarityBlockMetadata.name).to.equal(dungeonName);
-    }
-
-    if (doubleAddMetadata) {
-      const secondTx = achievementContract.connect(rarityBlockSigner).whitelistAchievements(metadatas);
-      if (revertMessage) {
-        await expect(secondTx).to.be.revertedWith(revertMessage);
-      }
-    }
-
-    await ethers.provider.send('hardhat_stopImpersonatingAccount', [block.address]);
-
-    return block;
-  };
-
-  const printSummonerAchievements = (summonerId: number, achievements: any[], points: number) => {
-    console.log('Printing achievements');
-    achievements.map((achievement: any) => {
-      console.log(`--- Achievement: ${achievement.metadata.title}`);
-      console.log(`- MetadataID: ${achievement.metadata.id}`);
-      console.log(`- Source: ${achievement.metadata.source}`);
-      console.log(`- Source Name: ${achievement.source_name}`);
-      console.log(`- Timestamp: ${new Date(Number(achievement.timestamp.toString()) * 1000)}`);
-      console.log(`- Description: ${achievement.metadata.description}`);
-      console.log(`- Points: ${achievement.metadata.points}`);
-    });
-    console.log(`Total Achievement Points for summoner ${summonerId} -> ${points}`);
-  };
-
-  const checkAchievements = async (
-    blockContract: Contract,
-    summonerId: number,
-    expectedTotalPoints: number,
-    expectedAchievementsCount: number,
-  ) => {
-    // Check points
-    const acPoints = await achievementContract.getAchievementPoints(summonerId);
-    expect(acPoints).to.equal(expectedTotalPoints);
-
-    // check metadatas
-    const achievements: any[] = await achievementContract.getAchievements(summonerId);
-    expect(achievements.length).to.equal(expectedAchievementsCount);
-
-    for (const [id, summonerAchievement] of Object.entries(achievements)) {
-      // const sourceMetadata = achievementMetadatas.find((el) => el.id === Number(summonerAchievement.metadata.id))!;
-      const sourceMetadata = await achievementContract.metadatas(summonerAchievement.metadata.id);
-
-      expect(summonerAchievement.metadata.title).to.equal(sourceMetadata.title);
-      expect(summonerAchievement.metadata.source).to.equal(blockContract.address);
-      expect(summonerAchievement.source_name).to.equal('The Fantom Dungeon');
-      expect(summonerAchievement.summoner).to.eq(summonerId);
-      expect(summonerAchievement.timestamp).to.gt(0);
-      expect(summonerAchievement.metadata.description).to.equal(sourceMetadata.description);
-      expect(summonerAchievement.metadata.points).to.equal(sourceMetadata.points);
-    }
-  };
-
-  describe('Test rarityBlock.adventure() method', () => {
-    it('[Emulated RarityBlock] from a real contract added to summoner1 correctly', async () => {
-      const blockContract = await deployAchievements(achievementMetadatas);
-
-      await ethers.provider.send('hardhat_impersonateAccount', [blockContract.address]);
-
-      // set metadata
-      await blockContract.setMobAchievement(await achievementContract.metadatas(4));
-      await blockContract.setMiniBossAchievement(await achievementContract.metadatas(5));
-      await blockContract.setBossAchievement(await achievementContract.metadatas(6));
-
-      // unlock achievements
-      await blockContract.unlockAchievementMob(summoner2Id);
-      await blockContract.unlockAchievementBoss(summoner2Id);
-      await blockContract.adventure(summoner1Id);
-      await ethers.provider.send('hardhat_stopImpersonatingAccount', [blockContract.address]);
-
-      await checkAchievements(blockContract, summoner1Id, 65, 3);
-      await checkAchievements(blockContract, summoner2Id, 55, 2);
-    });
-
-    it('[Real RarityBlock] from a real contract added to summoner1 correctly', async () => {
-      await rarityBlock.adventure(summoner1Id);
-      await rarityBlock.adventure(summoner2Id);
-
-      await checkAchievements(rarityBlock, summoner1Id, 65, 3);
-      await checkAchievements(rarityBlock, summoner2Id, 65, 3);
-    });
-
-    it('[Real RarityBlock] Achievements not added the second time (they are unique)', async () => {
-      await rarityBlock.adventure(summoner1Id);
-      const tx = rarityBlock.adventure(summoner1Id);
-      await expect(tx).to.be.revertedWith('Summoner already own the achievement');
-      const acPoints = await achievementContract.getAchievementPoints(summoner1Id);
-      expect(acPoints).to.equal(65);
-    });
-  });
-
-  describe('Test rarityBlock.whitelistAchievements() method', () => {
-    const correctMetadata = {
-      id: 0, // replaced by AchievementContract
-      source: '', // replaced by AchievementContract
-      difficulty: 1,
-      title: 'Defeated first monster',
-      description: "You have been brave enough to defeat the first monster of 'The Fantom Dungeon'",
-      points: 5,
-    };
-
-    it('Achievements not whitelisted because source is not whitelisted', async () => {
-      await deployAchievements([correctMetadata], 'Only whitelisted source can add Achievements', false);
-    });
-
-    it('Achievements not whitelisted because array of metadata is empty', async () => {
-      await deployAchievements([], 'You need to pass at least one AchievementMetadata');
-    });
+  describe('Test registerAchievement method', () => {
+    const correctMetadata = JSON.parse(JSON.stringify(achievementMetadatas[0]));
 
     it('Achievements not whitelisted because difficulty is not valid', async () => {
       const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
       malformedMetadata.difficulty = 10;
-      await deployAchievements([malformedMetadata], 'function was called with incorrect parameters');
+      await deployAchievements(
+        achievementContract,
+        addr1,
+        [malformedMetadata],
+        'function was called with incorrect parameters',
+      );
+    });
+
+    it('Achievements not whitelisted because source_name is empty', async () => {
+      const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
+      malformedMetadata.source_name = '';
+      await deployAchievements(achievementContract, addr1, [malformedMetadata], 'Source Name must not be empty');
     });
 
     it('Achievements not whitelisted because title is empty', async () => {
       const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
       malformedMetadata.title = '';
-      await deployAchievements([malformedMetadata], 'Title must not be empty');
+      await deployAchievements(achievementContract, addr1, [malformedMetadata], 'Title must not be empty');
     });
 
     it('Achievements not whitelisted because description is empty', async () => {
       const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
       malformedMetadata.description = '';
-      await deployAchievements([malformedMetadata], 'Description must not be empty');
+      await deployAchievements(achievementContract, addr1, [malformedMetadata], 'Description must not be empty');
     });
 
     it('Achievements not whitelisted because achievement points are less or equal zero', async () => {
       const malformedMetadata = JSON.parse(JSON.stringify(correctMetadata));
       malformedMetadata.points = 0;
-      await deployAchievements([malformedMetadata], 'Points must be greater than 0');
-    });
-
-    it("Contracts can't add achievements a second time", async () => {
-      await deployAchievements([correctMetadata], 'Source already defined their metadata', true, true);
+      await deployAchievements(achievementContract, addr1, [malformedMetadata], 'Points must be greater than 0');
     });
 
     it('Achievements whitelisted correctly', async () => {
-      await deployAchievements([correctMetadata]);
+      await deployAchievements(achievementContract, addr1, [achievementMetadatas[0]]);
+      await deployAchievements(achievementContract, addr1, [achievementMetadatas[1]]);
+      await deployAchievements(achievementContract, addr1, [achievementMetadatas[2]]);
+
+      checkAchievementMetadata(await achievementContract.metadatas(1), achievementMetadatas[0]);
+      checkAchievementMetadata(await achievementContract.metadatas(2), achievementMetadatas[1]);
+      checkAchievementMetadata(await achievementContract.metadatas(3), achievementMetadatas[2]);
+    });
+  });
+
+  describe('Test awardAchievement method', () => {
+    it('Award an achievement that does not exist', async () => {
+      const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 30, 'Requested metadata not exist');
+    });
+
+    it('Award an achievement that your contract does not own', async () => {
+      const anotherRarityBlock = await createRarityBlock(achievementContract, addr1);
+
+      await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      await awardAchievement(
+        achievementContract,
+        anotherRarityBlock,
+        summoner1Id,
+        1,
+        'You are not the owner of the metadata',
+      );
+    });
+
+    it('Award the same achievement to the same summoner', async () => {
+      const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 1);
+      await awardAchievement(achievementContract, rarityBlock, summoner2Id, 1);
+      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 1, 'Summoner already own the achievement');
+    });
+
+    it('Award an achievement to a summoner successfully', async () => {
+      const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      const rarityBlock2 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+
+      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 1);
+      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 2);
+      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 3);
+      await awardAchievement(achievementContract, rarityBlock, summoner2Id, 1);
+
+      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 4);
+      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 5);
+      await awardAchievement(achievementContract, rarityBlock2, summoner2Id, 4);
+      await awardAchievement(achievementContract, rarityBlock2, summoner2Id, 6);
+
+      await checkAchievements(achievementContract, summoner1Id, 80, 5);
+      await checkAchievements(achievementContract, summoner2Id, 60, 3);
+      await checkAchievements(achievementContract, summoner3Id, 0, 0);
+    });
+
+    it('Track the AchievementAwarded event', async () => {
+      const metadata = achievementMetadatas[0];
+      const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+
+      await ethers.provider.send('hardhat_impersonateAccount', [rarityBlock.address]);
+      const rarityBlockSigner = await ethers.getSigner(rarityBlock.address);
+
+      const txPromise = achievementContract.connect(rarityBlockSigner).awardAchievement(summoner1Id, metadata.id);
+      await expect(txPromise).to.emit(achievementContract, 'AchievementAwarded');
+
+      await ethers.provider.send('hardhat_stopImpersonatingAccount', [rarityBlock.address]);
+    });
+  });
+
+  describe('Test utility methods', () => {
+    it('Test hasAchievement, check if summoner has an achievement awarded', async () => {
+      const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 1);
+
+      const summoner1HasAchievement = await achievementContract.hasAchievement(summoner1Id, 1);
+      expect(summoner1HasAchievement).to.equal(true);
+
+      const summoner2HasAchievement = await achievementContract.hasAchievement(summoner2Id, 1);
+      expect(summoner2HasAchievement).to.equal(false);
+    });
+
+    it('Test getAchievements, get a list of achievements filterable by source', async () => {
+      const rarityBlock1 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      const rarityBlock2 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      const rarityBlock3 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      await awardAchievement(achievementContract, rarityBlock1, summoner1Id, 1);
+      await awardAchievement(achievementContract, rarityBlock1, summoner1Id, 2);
+      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 4);
+      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 5);
+      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 6);
+
+      await awardAchievement(achievementContract, rarityBlock1, summoner2Id, 1);
+      await awardAchievement(achievementContract, rarityBlock1, summoner2Id, 2);
+      await awardAchievement(achievementContract, rarityBlock2, summoner2Id, 6);
+
+      // Check points
+
+      expect(await achievementContract.getPoints(summoner1Id, [])).to.equal(80);
+      expect(await achievementContract.getPoints(summoner1Id, [rarityBlock1.address])).to.equal(15);
+      expect(await achievementContract.getPoints(summoner1Id, [rarityBlock2.address])).to.equal(65);
+      expect(await achievementContract.getPoints(summoner1Id, [rarityBlock3.address])).to.equal(0);
+
+      expect(await achievementContract.getPoints(summoner2Id, [])).to.equal(65);
+      expect(await achievementContract.getPoints(summoner2Id, [rarityBlock1.address])).to.equal(15);
+      expect(await achievementContract.getPoints(summoner2Id, [rarityBlock2.address])).to.equal(50);
+      expect(await achievementContract.getPoints(summoner2Id, [rarityBlock3.address])).to.equal(0);
+
+      // Get achievements without whitelisting, wihtout limits
+      const summoner1AllAchievements = await achievementContract.getAchievements(summoner1Id, [], 0, 9999);
+      expect(summoner1AllAchievements.length).to.equal(5);
+
+      // // Get achievements without whitelisting, wihtout limits
+      let summoner1LimitedAchievements = await achievementContract.getAchievements(summoner1Id, [], 0, 1);
+      expect(summoner1LimitedAchievements.length).to.equal(1);
+      expect(summoner1LimitedAchievements[0].metadata.id).to.equal(1);
+
+      summoner1LimitedAchievements = await achievementContract.getAchievements(summoner1Id, [], 1, 1);
+      expect(summoner1LimitedAchievements.length).to.equal(1);
+      expect(summoner1LimitedAchievements[0].metadata.id).to.equal(2);
+
+      summoner1LimitedAchievements = await achievementContract.getAchievements(summoner1Id, [], 2, 9999);
+      expect(summoner1LimitedAchievements.length).to.equal(3);
+      expect(summoner1LimitedAchievements[0].metadata.id).to.equal(4);
+      expect(summoner1LimitedAchievements[1].metadata.id).to.equal(5);
+      expect(summoner1LimitedAchievements[2].metadata.id).to.equal(6);
+
+      // Get achievements with whitelisting, wihtout limits
+      let summoner1AllFiltered = await achievementContract.getAchievements(
+        summoner1Id,
+        [rarityBlock2.address],
+        0,
+        9999,
+      );
+      expect(summoner1AllFiltered.length).to.equal(3);
+      expect(summoner1LimitedAchievements[0].metadata.id).to.equal(4);
+      expect(summoner1LimitedAchievements[1].metadata.id).to.equal(5);
+      expect(summoner1LimitedAchievements[2].metadata.id).to.equal(6);
+
+      summoner1AllFiltered = await achievementContract.getAchievements(summoner1Id, [rarityBlock2.address], 1, 9999);
+      expect(summoner1AllFiltered.length).to.equal(2);
+      expect(summoner1LimitedAchievements[1].metadata.id).to.equal(5);
+      expect(summoner1LimitedAchievements[2].metadata.id).to.equal(6);
+
+      // Offset greater than remaining
+      const txOffsetGreaterThanAchievementNumber = achievementContract.getAchievements(
+        summoner1Id,
+        [rarityBlock2.address],
+        10,
+        9999,
+      );
+      await expect(txOffsetGreaterThanAchievementNumber).to.be.revertedWith(
+        'Offset is greater than number of records available',
+      );
+
+      const summoner1NoSource = await achievementContract.getAchievements(summoner1Id, [rarityBlock3.address], 0, 9999);
+      expect(summoner1NoSource.length).to.equal(0);
     });
   });
 });
