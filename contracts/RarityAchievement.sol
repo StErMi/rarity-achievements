@@ -43,11 +43,14 @@ contract RarityAchievement {
      * @param summonerId Summoner ID to get the achievement
      * @param metadataId ID of the achievement metadata
      */
-    function awardAchievement(uint256 summonerId, uint256 metadataId) external {
+    function awardAchievement(uint256 summonerId, uint256 metadataId) external returns (bool success, string memory failMessage) {
         AchievementModel.AchievementMetadata storage metadata = metadatas[metadataId];
-        require(metadata.source != address(0), "Requested metadata not exist");
-        require(metadata.source == msg.sender, "You are not the owner of the metadata");
-        require(_ownerships[summonerId][metadataId] == false, "Summoner already own the achievement");
+
+        // return (false, "Requested metadata not exist");
+
+        if (metadata.source == address(0)) return (false, "Requested metadata not exist");
+        if (metadata.source != msg.sender) return (false, "You are not the owner of the metadata");
+        if (_ownerships[summonerId][metadataId] == true) return (false, "Summoner already own the achievement");
 
         // Add the ownership to the summoner
         _ownerships[summonerId][metadataId] = true;
@@ -57,6 +60,8 @@ contract RarityAchievement {
         achievements[summonerId].push(AchievementModel.Achievement(metadataId, summonerId, timestamp));
 
         emit AchievementAwarded(summonerId, metadataId, timestamp, metadata.points);
+
+        return (true, "");
     }
 
     /////////////////////////

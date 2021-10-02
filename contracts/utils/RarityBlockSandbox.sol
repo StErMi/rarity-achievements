@@ -77,20 +77,48 @@ contract RarityBlockSandbox is Ownable {
     }
 
     function adventure(uint256 summonerId) public {
-        _ac.awardAchievement(summonerId, mobAchievement);
-        _ac.awardAchievement(summonerId, miniBossAchievement);
-        _ac.awardAchievement(summonerId, bossAchievement);
+        // IMPORTANT
+        // In your contract don't revert if awardAchievement fail, it could be because user
+        // already own the achievement. Revert only when you are testing this integration
+        bool success;
+        string memory revertMessage;
+        (success, revertMessage) = _ac.awardAchievement(summonerId, mobAchievement);
+        require(success, revertMessage);
+        (success, revertMessage) = _ac.awardAchievement(summonerId, miniBossAchievement);
+        require(success, revertMessage);
+        (success, revertMessage) = _ac.awardAchievement(summonerId, bossAchievement);
+        require(success, revertMessage);
     }
 
     function awardAchievementMob(uint256 summonerId) public {
-        _ac.awardAchievement(summonerId, mobAchievement);
+        // IMPORTANT
+        // In your contract don't revert if awardAchievement fail, it could be because user
+        // already own the achievement. Revert only when you are testing this integration
+        (bool success, string memory revertMessage) = _ac.awardAchievement(summonerId, mobAchievement);
+        require(success, revertMessage);
     }
 
     function awardAchievementMiniBoss(uint256 summonerId) public {
-        _ac.awardAchievement(summonerId, miniBossAchievement);
+        // IMPORTANT
+        // In your contract don't revert if awardAchievement fail, it could be because user
+        // already own the achievement. Revert only when you are testing this integration
+        (bool success, string memory revertMessage) = _ac.awardAchievement(summonerId, miniBossAchievement);
+        require(success, revertMessage);
     }
 
     function awardAchievementBoss(uint256 summonerId) public {
-        _ac.awardAchievement(summonerId, bossAchievement);
+        // IMPORTANT
+        // In your contract don't revert if awardAchievement fail, it could be because user
+        // already own the achievement. Revert only when you are testing this integration
+        (bool success, string memory revertMessage) = _ac.awardAchievement(summonerId, bossAchievement);
+        require(success, revertMessage);
+    }
+
+    function awardAchievementOnlyDev(uint256 summonerId, uint256 metadataId) public onlyOwner {
+        // IMPORTANT
+        // In your contract don't revert if awardAchievement fail, it could be because user
+        // already own the achievement. Revert only when you are testing this integration
+        (bool success, string memory revertMessage) = _ac.awardAchievement(summonerId, metadataId);
+        require(success, revertMessage);
     }
 }

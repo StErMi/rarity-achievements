@@ -138,42 +138,36 @@ describe('Rarity Achievement Testing', () => {
   describe('Test awardAchievement method', () => {
     it('Award an achievement that does not exist', async () => {
       const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
-      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 30, 'Requested metadata not exist');
+      await awardAchievement(rarityBlock, summoner1Id, 30, 'Requested metadata not exist');
     });
 
     it('Award an achievement that your contract does not own', async () => {
       const anotherRarityBlock = await createRarityBlock(achievementContract, addr1);
 
       await deployAchievements(achievementContract, addr1, achievementMetadatas);
-      await awardAchievement(
-        achievementContract,
-        anotherRarityBlock,
-        summoner1Id,
-        1,
-        'You are not the owner of the metadata',
-      );
+      await awardAchievement(anotherRarityBlock, summoner1Id, 1, 'You are not the owner of the metadata');
     });
 
     it('Award the same achievement to the same summoner', async () => {
       const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
-      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 1);
-      await awardAchievement(achievementContract, rarityBlock, summoner2Id, 1);
-      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 1, 'Summoner already own the achievement');
+      await awardAchievement(rarityBlock, summoner1Id, 1);
+      await awardAchievement(rarityBlock, summoner2Id, 1);
+      await awardAchievement(rarityBlock, summoner1Id, 1, 'Summoner already own the achievement');
     });
 
     it('Award an achievement to a summoner successfully', async () => {
       const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
       const rarityBlock2 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
 
-      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 1);
-      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 2);
-      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 3);
-      await awardAchievement(achievementContract, rarityBlock, summoner2Id, 1);
+      await awardAchievement(rarityBlock, summoner1Id, 1);
+      await awardAchievement(rarityBlock, summoner1Id, 2);
+      await awardAchievement(rarityBlock, summoner1Id, 3);
+      await awardAchievement(rarityBlock, summoner2Id, 1);
 
-      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 4);
-      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 5);
-      await awardAchievement(achievementContract, rarityBlock2, summoner2Id, 4);
-      await awardAchievement(achievementContract, rarityBlock2, summoner2Id, 6);
+      await awardAchievement(rarityBlock2, summoner1Id, 4);
+      await awardAchievement(rarityBlock2, summoner1Id, 5);
+      await awardAchievement(rarityBlock2, summoner2Id, 4);
+      await awardAchievement(rarityBlock2, summoner2Id, 6);
 
       await checkAchievements(achievementContract, summoner1Id, 80, 5);
       await checkAchievements(achievementContract, summoner2Id, 60, 3);
@@ -197,7 +191,7 @@ describe('Rarity Achievement Testing', () => {
   describe('Test utility methods', () => {
     it('Test hasAchievement, check if summoner has an achievement awarded', async () => {
       const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
-      await awardAchievement(achievementContract, rarityBlock, summoner1Id, 1);
+      await awardAchievement(rarityBlock, summoner1Id, 1);
 
       const summoner1HasAchievement = await achievementContract.hasAchievement(summoner1Id, 1);
       expect(summoner1HasAchievement).to.equal(true);
@@ -210,15 +204,15 @@ describe('Rarity Achievement Testing', () => {
       const rarityBlock1 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
       const rarityBlock2 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
       const rarityBlock3 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
-      await awardAchievement(achievementContract, rarityBlock1, summoner1Id, 1);
-      await awardAchievement(achievementContract, rarityBlock1, summoner1Id, 2);
-      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 4);
-      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 5);
-      await awardAchievement(achievementContract, rarityBlock2, summoner1Id, 6);
+      await awardAchievement(rarityBlock1, summoner1Id, 1);
+      await awardAchievement(rarityBlock1, summoner1Id, 2);
+      await awardAchievement(rarityBlock2, summoner1Id, 4);
+      await awardAchievement(rarityBlock2, summoner1Id, 5);
+      await awardAchievement(rarityBlock2, summoner1Id, 6);
 
-      await awardAchievement(achievementContract, rarityBlock1, summoner2Id, 1);
-      await awardAchievement(achievementContract, rarityBlock1, summoner2Id, 2);
-      await awardAchievement(achievementContract, rarityBlock2, summoner2Id, 6);
+      await awardAchievement(rarityBlock1, summoner2Id, 1);
+      await awardAchievement(rarityBlock1, summoner2Id, 2);
+      await awardAchievement(rarityBlock2, summoner2Id, 6);
 
       // Check points
 

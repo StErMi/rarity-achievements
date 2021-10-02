@@ -15,24 +15,19 @@ const checkAchievementMetadata = (achievement: any, contractAchievement: any) =>
 };
 
 const awardAchievement = async (
-  achievementContract: Contract,
   rarityBlock: Contract,
   summonerId: number,
   metadataId: number,
   revertMessage?: string,
 ) => {
-  await ethers.provider.send('hardhat_impersonateAccount', [rarityBlock.address]);
-  const rarityBlockSigner = await ethers.getSigner(rarityBlock.address);
+  const txPromise = rarityBlock.awardAchievementOnlyDev(summonerId, metadataId);
 
-  const txPromise = achievementContract.connect(rarityBlockSigner).awardAchievement(summonerId, metadataId);
   if (revertMessage) {
     await expect(txPromise).to.be.revertedWith(revertMessage);
   } else {
     const tx = await txPromise;
     await tx.wait();
   }
-
-  await ethers.provider.send('hardhat_stopImpersonatingAccount', [rarityBlock.address]);
 };
 
 const createRarityBlock = async (achievementContract: Contract, fundsSender: SignerWithAddress) => {
