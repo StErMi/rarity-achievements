@@ -124,6 +124,17 @@ describe('Rarity Achievement Testing', () => {
       await deployAchievements(achievementContract, addr1, [malformedMetadata], 'Points must be greater than 0');
     });
 
+    it('Track the AchievementRegistered event', async () => {
+      const metadata = JSON.parse(JSON.stringify(achievementMetadatas[0]));
+      const rarityBlock = await createRarityBlock(achievementContract, addr1);
+      await ethers.provider.send('hardhat_impersonateAccount', [rarityBlock.address]);
+      const rarityBlockSigner = await ethers.getSigner(rarityBlock.address);
+      metadata.source = rarityBlock.address;
+      const txPromise = achievementContract.connect(rarityBlockSigner).registerAchievement(metadata);
+      await expect(txPromise).to.emit(achievementContract, 'AchievementRegistered');
+      await ethers.provider.send('hardhat_stopImpersonatingAccount', [rarityBlock.address]);
+    });
+
     it('Achievements whitelisted correctly', async () => {
       await deployAchievements(achievementContract, addr1, [achievementMetadatas[0]]);
       await deployAchievements(achievementContract, addr1, [achievementMetadatas[1]]);
@@ -192,14 +203,43 @@ describe('Rarity Achievement Testing', () => {
     it('Test hasAchievement, check if summoner has an achievement awarded', async () => {
       const rarityBlock = await deployAchievements(achievementContract, addr1, achievementMetadatas);
       await awardAchievement(rarityBlock, summoner1Id, 1);
-
       const summoner1HasAchievement = await achievementContract.hasAchievement(summoner1Id, 1);
       expect(summoner1HasAchievement).to.equal(true);
-
       const summoner2HasAchievement = await achievementContract.hasAchievement(summoner2Id, 1);
       expect(summoner2HasAchievement).to.equal(false);
     });
-
+    it('Test hasAchievement on not existing summoner', async () => {
+      await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      const summoner1HasAchievement = await achievementContract.hasAchievement(10, 1);
+      expect(summoner1HasAchievement).to.equal(false);
+    });
+    it('Test hasAchievement on not existing achievement', async () => {
+      const summoner1HasAchievement = await achievementContract.hasAchievement(summoner1Id, 1000);
+      expect(summoner1HasAchievement).to.equal(false);
+    });
+    it('Test getPoints on not existing summoner', async () => {
+      await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      const points = await achievementContract.getPoints(10, []);
+      expect(points).to.equal(0);
+    });
+    it('Test getPoints on not existing source', async () => {
+      const points = await achievementContract.getPoints(summoner1Id, ['0x2BA751061D82284b42B4C83E38541c293ebd265A']);
+      expect(points).to.equal(0);
+    });
+    it('Test getAchievements on not existing summoner', async () => {
+      await deployAchievements(achievementContract, addr1, achievementMetadatas);
+      const achievements = await achievementContract.getAchievements(10, [], 0, 99999);
+      expect(achievements.length).to.equal(0);
+    });
+    it('Test getAchievements on not existing source', async () => {
+      const achievements = await achievementContract.getAchievements(
+        10,
+        ['0x2BA751061D82284b42B4C83E38541c293ebd265A'],
+        0,
+        99999,
+      );
+      expect(achievements.length).to.equal(0);
+    });
     it('Test getAchievements, get a list of achievements filterable by source', async () => {
       const rarityBlock1 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
       const rarityBlock2 = await deployAchievements(achievementContract, addr1, achievementMetadatas);
@@ -209,42 +249,33 @@ describe('Rarity Achievement Testing', () => {
       await awardAchievement(rarityBlock2, summoner1Id, 4);
       await awardAchievement(rarityBlock2, summoner1Id, 5);
       await awardAchievement(rarityBlock2, summoner1Id, 6);
-
       await awardAchievement(rarityBlock1, summoner2Id, 1);
       await awardAchievement(rarityBlock1, summoner2Id, 2);
       await awardAchievement(rarityBlock2, summoner2Id, 6);
-
       // Check points
-
       expect(await achievementContract.getPoints(summoner1Id, [])).to.equal(80);
       expect(await achievementContract.getPoints(summoner1Id, [rarityBlock1.address])).to.equal(15);
       expect(await achievementContract.getPoints(summoner1Id, [rarityBlock2.address])).to.equal(65);
       expect(await achievementContract.getPoints(summoner1Id, [rarityBlock3.address])).to.equal(0);
-
       expect(await achievementContract.getPoints(summoner2Id, [])).to.equal(65);
       expect(await achievementContract.getPoints(summoner2Id, [rarityBlock1.address])).to.equal(15);
       expect(await achievementContract.getPoints(summoner2Id, [rarityBlock2.address])).to.equal(50);
       expect(await achievementContract.getPoints(summoner2Id, [rarityBlock3.address])).to.equal(0);
-
       // Get achievements without whitelisting, wihtout limits
       const summoner1AllAchievements = await achievementContract.getAchievements(summoner1Id, [], 0, 9999);
       expect(summoner1AllAchievements.length).to.equal(5);
-
       // // Get achievements without whitelisting, wihtout limits
       let summoner1LimitedAchievements = await achievementContract.getAchievements(summoner1Id, [], 0, 1);
       expect(summoner1LimitedAchievements.length).to.equal(1);
       expect(summoner1LimitedAchievements[0].metadata.id).to.equal(1);
-
       summoner1LimitedAchievements = await achievementContract.getAchievements(summoner1Id, [], 1, 1);
       expect(summoner1LimitedAchievements.length).to.equal(1);
       expect(summoner1LimitedAchievements[0].metadata.id).to.equal(2);
-
       summoner1LimitedAchievements = await achievementContract.getAchievements(summoner1Id, [], 2, 9999);
       expect(summoner1LimitedAchievements.length).to.equal(3);
       expect(summoner1LimitedAchievements[0].metadata.id).to.equal(4);
       expect(summoner1LimitedAchievements[1].metadata.id).to.equal(5);
       expect(summoner1LimitedAchievements[2].metadata.id).to.equal(6);
-
       // Get achievements with whitelisting, wihtout limits
       let summoner1AllFiltered = await achievementContract.getAchievements(
         summoner1Id,
@@ -256,12 +287,10 @@ describe('Rarity Achievement Testing', () => {
       expect(summoner1LimitedAchievements[0].metadata.id).to.equal(4);
       expect(summoner1LimitedAchievements[1].metadata.id).to.equal(5);
       expect(summoner1LimitedAchievements[2].metadata.id).to.equal(6);
-
       summoner1AllFiltered = await achievementContract.getAchievements(summoner1Id, [rarityBlock2.address], 1, 9999);
       expect(summoner1AllFiltered.length).to.equal(2);
       expect(summoner1LimitedAchievements[1].metadata.id).to.equal(5);
       expect(summoner1LimitedAchievements[2].metadata.id).to.equal(6);
-
       // Offset greater than remaining
       const txOffsetGreaterThanAchievementNumber = achievementContract.getAchievements(
         summoner1Id,
@@ -272,7 +301,6 @@ describe('Rarity Achievement Testing', () => {
       await expect(txOffsetGreaterThanAchievementNumber).to.be.revertedWith(
         'Offset is greater than number of records available',
       );
-
       const summoner1NoSource = await achievementContract.getAchievements(summoner1Id, [rarityBlock3.address], 0, 9999);
       expect(summoner1NoSource.length).to.equal(0);
     });

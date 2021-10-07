@@ -21,6 +21,14 @@ contract RarityAchievement {
     mapping(uint256 => mapping(uint256 => bool)) private _ownerships;
 
     event AchievementAwarded(uint256 indexed summonerId, uint256 indexed metadataId, uint256 timestamp, uint256 points);
+    event AchievementRegistered(
+        address indexed source,
+        uint256 indexed metadataId,
+        string source_name,
+        AchievementModel.Difficulty difficulty,
+        string title,
+        uint256 points
+    );
 
     /**
      * @notice Function used by external contract to register achievement metadata
@@ -35,6 +43,8 @@ contract RarityAchievement {
         metadata.id = _metadataId.current();
         metadatas[metadata.id] = metadata;
 
+        emit AchievementRegistered(metadata.source, metadata.id, metadata.source_name, metadata.difficulty, metadata.title, metadata.points);
+
         return metadata.id;
     }
 
@@ -45,8 +55,6 @@ contract RarityAchievement {
      */
     function awardAchievement(uint256 summonerId, uint256 metadataId) external returns (bool success, string memory failMessage) {
         AchievementModel.AchievementMetadata storage metadata = metadatas[metadataId];
-
-        // return (false, "Requested metadata not exist");
 
         if (metadata.source == address(0)) return (false, "Requested metadata not exist");
         if (metadata.source != msg.sender) return (false, "You are not the owner of the metadata");

@@ -19,21 +19,20 @@ async function main() {
   await rarity.deployed();
   console.log('Rarity deployed to:', rarity.address);
 
-  const AchievementContract = await ethers.getContractFactory('AchievementContract');
-  const achievementContract = await AchievementContract.deploy();
-  await achievementContract.deployed();
-  console.log('AchievementContract deployed to:', achievementContract.address);
+  const RarityAchievement = await ethers.getContractFactory('RarityAchievement');
+  const rarityAchievement = await RarityAchievement.deploy();
+  await rarityAchievement.deployed();
+  console.log('RarityAchievement deployed to:', rarityAchievement.address);
 
-  const RarityBlock = await ethers.getContractFactory('RarityBlock');
-  const rarityBlock = await RarityBlock.deploy(achievementContract.address);
-  await rarityBlock.deployed();
-  console.log('RarityBlock deployed to:', rarityBlock.address);
+  const RarityBlockSandbox = await ethers.getContractFactory('RarityBlockSandbox');
+  const rarityBlockSandbox = await RarityBlockSandbox.deploy(rarityAchievement.address);
+  await rarityBlockSandbox.deployed();
+  console.log('RarityBlockSandbox1 deployed to:', rarityBlockSandbox.address);
 
-  // Whitelist rarityBlock contract into AchievementContract
-  await achievementContract.whitelistSource(rarityBlock.address);
-
-  // Add rarityBlock achievements to AchievementContract
-  await rarityBlock.whitelistAchievements();
+  const RarityBlockSandbox2 = await ethers.getContractFactory('RarityBlockSandbox');
+  const rarityBlockSandbox2 = await RarityBlockSandbox2.deploy(rarityAchievement.address);
+  await rarityBlockSandbox2.deployed();
+  console.log('RarityBlockSandbox2 deployed to:', rarityBlockSandbox2.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
